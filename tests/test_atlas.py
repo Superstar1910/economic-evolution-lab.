@@ -26,3 +26,18 @@ def test_graphql_errors_fail_closed():
         def read(self): return b'{"errors":[{"message":"invalid field"}],"data":null}'
     with pytest.raises(AtlasError):
         graphql("query { broken }", opener=lambda *a, **kw: Response())
+
+def test_typed_atlas_identifiers():
+    from evolution_lab.atlas import numeric_id
+    assert numeric_id("country-533", "country") == 533
+    assert numeric_id(533, "country") == 533
+    assert numeric_id("product-714", "product") == 714
+
+def test_malformed_atlas_identifier_fails():
+    from evolution_lab.atlas import numeric_id
+    with pytest.raises(AtlasError):
+        numeric_id("country-533-extra", "country")
+
+def test_normalize_typed_product_id():
+    rows = [{"productId": "product-714", "year": 2022, "exportValue": 100, "exportRca": 1.2}]
+    assert normalize(rows, "UGA", {714: "0901"}, 2022, 2022)[0]["product_hs92_4"] == "0901"

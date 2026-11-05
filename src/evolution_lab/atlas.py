@@ -61,7 +61,8 @@ def numeric_id(value: object, kind: str) -> int:
     if isinstance(value, bool):
         raise AtlasError(f"Invalid {kind} identifier: {value!r}")
     raw = str(value)
-    match = re.fullmatch(rf"(?:{re.escape(kind)}-)?([0-9]+)", raw)
+    prefix = r"product-(?:HS92-)?" if kind == "product" else r"country-"
+    match = re.fullmatch(rf"(?:{prefix})?([0-9]+)", raw)
     if match is None:
         raise AtlasError(f"Invalid {kind} identifier: {value!r}")
     return int(match.group(1))

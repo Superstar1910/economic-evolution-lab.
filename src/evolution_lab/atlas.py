@@ -7,6 +7,7 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -51,14 +52,29 @@ def graphql(query: str, variables: dict | None = None, *, retries: int = 3, time
     raise AssertionError("unreachable")
 
 
+def numeric_id(value: object, kind: str) -> int:
+    """Decode Atlas numeric IDs, including typed strings like country-533.
+
+    GraphQL accepts integer countryId arguments even when catalogue records
+    serialize their IDs as typed strings. Reject malformed identifiers.
+    """
+    if isinstance(value, bool):
+        raise AtlasError(f"Invalid {kind} identifier: {value!r}")
+    raw = str(value)
+    match = re.fullmatch(rf"(?:{re.escape(kind)}-)?([0-9]+)", raw)
+    if match is None:
+        raise AtlasError(f"Invalid {kind} identifier: {value!r}")
+    return int(match.group(1))
+
+
 def catalogues() -> tuple[dict[str, int], dict[int, str]]:
     countries = graphql(COUNTRIES_QUERY).get("locationCountry")
     products = graphql(PRODUCTS_QUERY).get("productHs92")
     if not isinstance(countries, list) or not isinstance(products, list):
         raise AtlasError("Atlas country or product catalogue missing")
-    iso_to_id = {str(c["iso3Code"]).upper(): int(c["countryId"])
+    iso_to_id = {str(c["iso3Code"]).upper(): numeric_id(c["countryId"], "country")
                  for c in countries if c.get("iso3Code") and c.get("countryId") is not None}
-    id_to_code = {int(p["productId"]): str(p["code"]).zfill(4)
+    id_to_code = {numeric_id(p["productId"], "product"): str(p["code"]).zfill(4)
                   for p in products if p.get("productId") is not None and p.get("code") is not None}
     if not iso_to_id or not id_to_code or any(len(code) != 4 for code in id_to_code.values()):
         raise AtlasError("Unexpected Atlas catalogue schema")
@@ -71,7 +87,7 @@ def normalize(rows: list[dict], iso3: str, code_by_id: dict[int, str], start: in
     result = []
     seen = set()
     for record in rows:
-        product_id = int(record["productId"])
+        product_id = numeric_id(record["productId"], "product")
         if product_id not in code_by_id:
             raise AtlasError(f"Unknown productId {product_id}")
         year = int(record["year"])

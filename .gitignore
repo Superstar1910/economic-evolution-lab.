@@ -1,0 +1,13 @@
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+.venv/
+.env
+data/raw/
+data/interim/
+data/processed/
+results/private/
+*.parquet
+*.sqlite
+*.db

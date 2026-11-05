@@ -41,3 +41,13 @@ def test_malformed_atlas_identifier_fails():
 def test_normalize_typed_product_id():
     rows = [{"productId": "product-714", "year": 2022, "exportValue": 100, "exportRca": 1.2}]
     assert normalize(rows, "UGA", {714: "0901"}, 2022, 2022)[0]["product_hs92_4"] == "0901"
+
+def test_hs92_classification_qualified_id():
+    from evolution_lab.atlas import numeric_id
+    assert numeric_id("product-HS92-650", "product") == 650
+    assert numeric_id("product-650", "product") == 650
+    assert numeric_id(650, "product") == 650
+
+def test_hs92_qualified_normalization():
+    rows = [{"productId": "product-HS92-650", "year": 2022, "exportValue": 100, "exportRca": 1.2}]
+    assert normalize(rows, "UGA", {650: "0901"}, 2022, 2022)[0]["product_hs92_4"] == "0901"
